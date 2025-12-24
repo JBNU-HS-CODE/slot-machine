@@ -35,9 +35,18 @@
         font-size: 28px;
         font-weight: 700;
         letter-spacing: 2px;
-        margin-bottom: 24px;
+        margin-bottom: 8px;
         color: gold;
         text-shadow: 0 0 10px rgba(255, 215, 0, 0.6);
+    }
+
+    .ticket {
+        text-align: center;
+        margin-bottom: 20px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #ffd700;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.5);
     }
 
     .reels {
@@ -122,6 +131,7 @@
 <body>
 <div class="machine">
     <div class="title">SLOT MACHINE</div>
+    <div class="ticket" id="ticketDisplay">Tickets: 0</div>
 
     <div class="reels">
         <div class="reel"><div class="numbers"></div></div>
@@ -140,10 +150,27 @@
     const reels = document.querySelectorAll(".numbers");
     const result = document.getElementById("result");
     const spinBtn = document.getElementById("spin");
+    const ticketDisplay = document.getElementById("ticketDisplay");
 
     const SYMBOLS = [0,1,2,3,4,5,6,7,8,9];
     const REPEAT = 20;
-    const JACKPOT_CHANCE = 0.0001; // 0.01%
+    const JACKPOT_CHANCE = 0.0001;
+
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+    let tickets = parseInt(params.get("ticket"), 10);
+    if (isNaN(tickets) || tickets < 0) tickets = 0;
+
+    function updateTicketInUrl() {
+        params.set("ticket", tickets);
+        history.replaceState(null, "", url.toString());
+    }
+
+    function renderTickets() {
+        ticketDisplay.textContent = `Tickets: ${tickets}`;
+    }
+
+    renderTickets();
 
     function buildReel(reel) {
         reel.innerHTML = "";
@@ -160,10 +187,21 @@
     reels.forEach(buildReel);
 
     function spin() {
+        if (tickets <= 0) {
+            result.textContent = "No tickets left";
+            result.classList.add("lose");
+            return;
+        }
+
+        tickets -= 1;
+        updateTicketInUrl();
+        renderTickets();
+
         spinBtn.disabled = true;
         result.textContent = "";
 
-        const isJackpot = Math.random() < JACKPOT_CHANCE;
+        const chance = Math.random();
+        const isJackpot = chance < JACKPOT_CHANCE;
         let finalValues;
 
         if (isJackpot) {
@@ -181,7 +219,6 @@
 
         reels.forEach((reel, index) => {
             const value = finalValues[index];
-
             const fullSpins = 1 + Math.floor(Math.random() * 3);
             const totalSteps = fullSpins * SYMBOLS.length + value;
 
@@ -208,12 +245,10 @@
     }
 
     spinBtn.addEventListener("click", spin);
-</script>
-<script>
+
     document.addEventListener("keydown", (e) => {
         if (e.code !== "Space") return;
         e.preventDefault();
-
         if (spinBtn.disabled) return;
         spin();
     });
