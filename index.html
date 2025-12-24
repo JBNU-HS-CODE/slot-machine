@@ -21,34 +21,31 @@ body {
 }
 
 .machine {
+    width: 440px;
     background: linear-gradient(180deg, #1a1a1a, #000);
     border-radius: 24px;
     padding: 32px;
-    width: 420px;
-    box-shadow: 0 0 40px rgba(255, 215, 0, 0.15);
 }
 
 .title {
     text-align: center;
     font-size: 28px;
     font-weight: 700;
-    letter-spacing: 2px;
-    margin-bottom: 10px;
     color: gold;
+    margin-bottom: 8px;
 }
 
-.ticket {
+.stat {
     text-align: center;
-    margin-bottom: 6px;
-    font-size: 16px;
-    font-weight: 600;
+    font-size: 15px;
     color: #ffd700;
+    margin-bottom: 4px;
 }
 
 .reels {
     display: flex;
-    gap: 16px;
     justify-content: center;
+    gap: 16px;
     margin: 24px 0;
 }
 
@@ -77,38 +74,37 @@ body {
 
 .controls {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    gap: 8px;
 }
 
 button {
-    background: linear-gradient(180deg, gold, #b8860b);
+    flex: 1;
     border: none;
     border-radius: 999px;
-    padding: 12px 24px;
-    font-size: 16px;
+    padding: 10px;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
+    background: linear-gradient(180deg, gold, #b8860b);
 }
 
 .result {
-    margin-top: 16px;
     text-align: center;
+    margin-top: 12px;
     min-height: 24px;
-    font-size: 18px;
 }
 
-.lose {
-    color: #f33;
-}
+.lose { color: #f33; }
 </style>
 </head>
 
 <body>
 <div class="machine">
     <div class="title">SLOT MACHINE</div>
-    <div class="ticket" id="ticketDisplay">Tickets: 0</div>
-    <div class="ticket" id="clickDisplay">Clicks: 0 / 1000</div>
+    <div class="stat" id="money">$0</div>
+    <div class="stat" id="tickets">Tickets: 0</div>
+    <div class="stat" id="clicks">Clicks: 0 / 1000</div>
+    <div class="stat" id="chance">Jackpot: 0.01%</div>
 
     <div class="reels">
         <div class="reel"><div class="numbers"></div></div>
@@ -118,7 +114,8 @@ button {
 
     <div class="controls">
         <button id="spin">SPIN</button>
-        <button id="buy">+1000 CLICK</button>
+        <button id="buy">$10 → 🎟</button>
+        <button id="up">$1000 → ×1.5</button>
     </div>
 
     <div class="result" id="result"></div>
@@ -128,131 +125,128 @@ button {
 const reels = document.querySelectorAll(".numbers");
 const spinBtn = document.getElementById("spin");
 const buyBtn = document.getElementById("buy");
-const result = document.getElementById("result");
-const ticketDisplay = document.getElementById("ticketDisplay");
-const clickDisplay = document.getElementById("clickDisplay");
+const upBtn = document.getElementById("up");
 
-const SYMBOLS = [0,1,2,3,4,5,6,7,8,9];
+const moneyEl = document.getElementById("money");
+const ticketEl = document.getElementById("tickets");
+const clickEl = document.getElementById("clicks");
+const chanceEl = document.getElementById("chance");
+const resultEl = document.getElementById("result");
+
+const SYMBOLS = 10;
 const REPEAT = 20;
-const JACKPOT_CHANCE = 0.0001;
+const BASE_CHANCE = 0.0001;
 
 const url = new URL(location.href);
-const params = url.searchParams;
+const p = url.searchParams;
 
-let tickets = parseInt(params.get("ticket"), 10);
-let clicks = parseInt(params.get("click"), 10);
+let money = +p.get("money") || 0;
+let tickets = +p.get("ticket") || 0;
+let clicks = +p.get("click") || 0;
+let mul = +p.get("mul") || 1;
 
-if (isNaN(tickets) || tickets < 0) tickets = 0;
-if (isNaN(clicks) || clicks < 0) clicks = 0;
-
-function updateUrl() {
-    params.set("ticket", tickets);
-    params.set("click", clicks);
+function save() {
+    p.set("money", money);
+    p.set("ticket", tickets);
+    p.set("click", clicks);
+    p.set("mul", mul);
     history.replaceState(null, "", url.toString());
 }
 
 function render() {
-    ticketDisplay.textContent = `Tickets: ${tickets}`;
-    clickDisplay.textContent = `Clicks: ${clicks} / 1000`;
+    moneyEl.textContent = `$${money}`;
+    ticketEl.textContent = `Tickets: ${tickets}`;
+    clickEl.textContent = `Clicks: ${clicks} / 1000`;
+    chanceEl.textContent = `Jackpot: ${(BASE_CHANCE * mul * 100).toFixed(4)}%`;
 }
 
-function buildReel(reel) {
-    reel.innerHTML = "";
+function build(r) {
+    r.innerHTML = "";
     for (let i = 0; i < REPEAT; i++) {
-        for (const n of SYMBOLS) {
-            const div = document.createElement("div");
-            div.className = "number";
-            div.textContent = n;
-            reel.appendChild(div);
+        for (let n = 0; n < SYMBOLS; n++) {
+            const d = document.createElement("div");
+            d.className = "number";
+            d.textContent = n;
+            r.appendChild(d);
         }
     }
 }
 
-reels.forEach(buildReel);
+reels.forEach(build);
 render();
 
 function spin() {
     if (tickets <= 0) {
-        result.textContent = "No tickets";
-        result.classList.add("lose");
+        resultEl.textContent = "No tickets";
+        resultEl.classList.add("lose");
         return;
     }
 
-    tickets -= 1;
-    updateUrl();
-    render();
+    tickets--;
+    save(); render();
 
     spinBtn.disabled = true;
-    result.textContent = "";
+    resultEl.textContent = "";
 
-    const isJackpot = Math.random() < JACKPOT_CHANCE;
-    let finalValues;
+    const jackpot = Math.random() < BASE_CHANCE * mul;
+    const vals = jackpot
+        ? Array(3).fill(Math.floor(Math.random() * 10))
+        : Array.from({length:3}, () => Math.floor(Math.random()*10));
 
-    if (isJackpot) {
-        const v = Math.floor(Math.random() * 10);
-        finalValues = [v, v, v];
-    } else {
-        do {
-            finalValues = [
-                Math.floor(Math.random() * 10),
-                Math.floor(Math.random() * 10),
-                Math.floor(Math.random() * 10)
-            ];
-        } while (finalValues[0] === finalValues[1] && finalValues[1] === finalValues[2]);
-    }
-
-    reels.forEach((reel, i) => {
-        const fullSpins = 1 + Math.floor(Math.random() * 3);
-        const steps = fullSpins * SYMBOLS.length + finalValues[i];
-
-        reel.style.transition = "none";
-        reel.style.transform = "translateY(0)";
-        reel.offsetHeight;
-
-        reel.style.transition = `transform ${1.2 + i * 0.3}s cubic-bezier(.21,.61,.35,1)`;
-        reel.style.transform = `translateY(-${steps * 100}px)`;
+    reels.forEach((r,i) => {
+        const steps = (1 + Math.floor(Math.random()*3)) * 10 + vals[i];
+        r.style.transition = "none";
+        r.style.transform = "translateY(0)";
+        r.offsetHeight;
+        r.style.transition = `transform ${1.2+i*0.3}s cubic-bezier(.21,.61,.35,1)`;
+        r.style.transform = `translateY(-${steps*100}px)`;
     });
 
     setTimeout(() => {
         spinBtn.disabled = false;
-        result.textContent = isJackpot ? "JACKPOT!" : "Try again";
-        result.classList.toggle("lose", !isJackpot);
+        if (jackpot) {
+            money += 100;
+            resultEl.textContent = "JACKPOT +$100";
+        } else {
+            resultEl.textContent = "Try again";
+            resultEl.classList.add("lose");
+        }
+        save(); render();
     }, 1800);
 }
 
-spinBtn.addEventListener("click", spin);
+spinBtn.onclick = spin;
 
-buyBtn.addEventListener("click", () => {
-    clicks += 1;
-    if (clicks >= 1000) {
-        clicks -= 1000;
-        tickets += 1;
-    }
-    updateUrl();
-    render();
-});
+buyBtn.onclick = () => {
+    if (money < 10) return;
+    money -= 10;
+    tickets++;
+    save(); render();
+};
 
-const CLICK_KEYS = new Set(["KeyA", "KeyS", "KeyD", "KeyJ", "KeyK", "KeyL"]);
-document.addEventListener("keydown", (e) => {
+upBtn.onclick = () => {
+    if (money < 1000) return;
+    money -= 1000;
+    mul *= 1.5;
+    save(); render();
+};
+
+const CLICK_KEYS = new Set(["KeyA","KeyS","KeyD","KeyJ","KeyK","KeyL"]);
+document.addEventListener("keydown", e => {
     if (e.code === "Space") {
         e.preventDefault();
-        if (!spinBtn.disabled) spin();
+        spin();
         return;
     }
-
     if (!CLICK_KEYS.has(e.code)) return;
 
-    clicks += 1;
-
+    clicks++;
     if (clicks >= 1000) {
         clicks -= 1000;
-        tickets += 1;
+        money += 1;
     }
-
-    updateUrl();
-    render();
+    save(); render();
 });
-
 </script>
 </body>
 </html>
