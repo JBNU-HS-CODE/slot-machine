@@ -209,5 +209,14 @@
 
     spinBtn.addEventListener("click", spin);
 </script>
+<script>
+    document.addEventListener("keydown", (e) => {
+        if (e.code !== "Space") return;
+        e.preventDefault();
+
+        if (spinBtn.disabled) return;
+        spin();
+    });
+</script>
 </body>
 </html>
