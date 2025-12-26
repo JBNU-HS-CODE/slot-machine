@@ -216,6 +216,7 @@ button:disabled {
     <div class="ticket">
         Difficulty:
         <select id="difficultySelect">
+            <option value="easy">간고등어 (10%)</option>
             <option value="low">하 (7%)</option>
             <option value="mid">중 (1.5%)</option>
             <option value="high">상 (0.7%)</option>
@@ -255,6 +256,7 @@ const REPEAT = 20;
 const JACKPOT_CHANCE = 0.0001;
 
 const DIFFICULTY_RATE = {
+    easy: 0.1,
     low: 0.07,
     mid: 0.015,
     high: 0.007,
